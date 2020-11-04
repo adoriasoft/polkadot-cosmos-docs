@@ -10,9 +10,9 @@ The core idea of our project is to combine Polkadot shared security with the fle
 ## Current stage
 By this moment, we have implemented a basic integration between Substrate and Cosmos SDK that allows transaction and block producing and validation.  Tendermint consensus and network layers used in Cosmos have been replaced with Substrate-based “sub-node". We have implemented a new Substrate pallet that acts like Tendermint. Changes in Cosmos SDK were minimized to allow Cosmos developers to change consensus and network layers of their applications as easy as possible. To run Cosmos SDK with the Substrate a user need only enable a few flags during the node start (disable Tendermint consensus and enable grpc). 
 
-A more detailed description of the finished steps and future plans can be found in the [roadmap](https://github.com/adoriasoft/polkadot-cosmos-docs/blob/main/roadmap.md).
+A more detailed description of the finished steps and future plans can be found in the [roadmap](https://github.com/adoriasoft/polkadot-cosmos-docs/blob/master/roadmap.md).
 
-The details of solution architecture are described [here](https://github.com/adoriasoft/polkadot-cosmos-docs/blob/main/description.md).
+The details of solution architecture are described [here](https://github.com/adoriasoft/polkadot-cosmos-docs/blob/master/description.md).
 
 ## Links
  - [Polkadot](https://polkadot.network/)
