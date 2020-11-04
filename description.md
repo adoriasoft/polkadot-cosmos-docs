@@ -9,7 +9,7 @@ In Cosmos SDK Tendermint core encapsulates the Network and Consensus layers of a
 
 Figure 1 - The interaction of two Cosmos nodes
 
-### ABCI
+## ABCI
 ABCI contains a set of methods including:
 - CheckTx - check and set transaction priority before adding to transaction pool
 - BeginBlock - start block execution
@@ -25,7 +25,7 @@ We've already finished the implementation of all ABCI methods excluding EndBlock
 
 ## Polkadot-Cosmos integration
 
-To minimize changes in Substrate and Cosmos cores, we add a new pallet `cosmos-abci` that contains one type of extrinsics - `abci_transaction`- that is used as a wrapper for regular Cosmos transactions.
+To minimize changes in Substrate and Cosmos cores, we add a new pallet `cosmos-abci` that contains one type of extrinsics - `abci_transaction` - that is used as a wrapper for regular Cosmos transactions.
 
 We analyzed several possible solutions for integration:
 - Runtime interfaces
@@ -42,6 +42,7 @@ Figure 2 - Transaction and block processing in Substrate-Cosmos app
 We've implemented cosmos-abci [pallet](https://github.com/adoriasoft/polkadot_cosmos_integration/tree/master/substrate/pallets/cosmos-abci) that contains logic of calls to main ABCI methods (checkTx, deliverTx, beginBlock, endBlock, commit, initChain). These methods are called during chain initialization, transaction validation and block execution. Tonic library, necessary proto files and GRPC calls are situated [here](https://github.com/adoriasoft/polkadot_cosmos_integration/tree/master/substrate/pallets/cosmos-abci/abci).
 
 **Problem with on_initialize**
+
 In general, the approach based on runtime interfaces seems to be the simplest and the most convenient. But we found a strange behavior that `on_initialize` can be called multiple times on the same block height and even after `on_finalize` on this height. Also, it was imposible to get a hash of the current block during `on_initialize`. According to the [reply](https://github.com/paritytech/subport/issues/43) of support: 
 1) `on_initialize` is called any time that a runtime function is called from the client, so it is normal to see multiple calls to `on_initialize`.
 2) There is no guarantee that `on_finalize` will execute after `on_initialize`.
@@ -98,32 +99,34 @@ Tendermint server provides the following [API](https://docs.tendermint.com/maste
 	
 - *ABCI* - calls to ABCI Info and Query methods - (done)
 - *Unsafe API* 
-We analyzed the use cases of `dial_seeds` and `dial_peers` RPCs and came to the conclusion that Substrate doesn't need it.
+  
+	We analyzed the use cases of `dial_seeds` and `dial_peers` RPCs and came to the conclusion that Substrate doesn't need it.
 
-As in Tendermint docs specified: DialSeeds: Dial a peer, this route in under unsafe, and has to manually enabled to use and DialPeers: Set a persistent peer, this route in under unsafe, and has to manually enabled to use. Substrate already has pretty much the same API inside Node CLI (--bootnodes or --reserved-nodes) and p2p protocol that connects all nodes.
+	As in Tendermint docs specified: DialSeeds: Dial a peer, this route in under unsafe, and has to manually enabled to use and DialPeers: Set a persistent peer, this route in under unsafe, and has to manually enabled to use. Substrate already has pretty much the same API inside Node CLI (--bootnodes or --reserved-nodes) and p2p protocol that connects all nodes.
 
-We could add them as dummy methods that do nothing but return a response with success but we think that this will be more unclear to ones who will use it.
+	We could add them as dummy methods that do nothing but return a response with success but we think that this will be more unclear to ones who will use it.
 - *Websocket* - (will be done)
 - *Info* - (will be done)
 
 
 ## ABCI calls in Substrate
 
-As described above, different ABCI methods are called in different places.
+As described above, different ABCI methods are called in different places. Full specification of standard requests and responses is [here](https://github.com/adoriasoft/polkadot_cosmos_integration/blob/develop/pallets/cosmos-abci/abci/proto/types.proto).
 
-| \# | Method | Substrate method | Request | Response |
-| :------------: | :------------: | :------------: | :------------: | :------------: |
-| 1 | initChain | load_spec |json genesis file | - |
-| 2 | checkTx | validate_transaction | tx data | TransactionValidity struct or error |
-| 3 | beginBlock | cosmos_abci::offchain_worker | Block header and system information | - |
-| 4 | deliverTx | cosmos_abci::offchain_worker | tx data | - |
-| 5 | endBlock | cosmos_abci::offchain_worker | Block height | - |
-| 6 | commit | cosmos_abci::offchain_worker  | - | - |
-| 7 | query | json-rpc server | Data from CLI | - |
-| 8 | info | json-rpc server | - | - |
-| 9 | setOption | - | - | - |
-| 10 | echo | - | - | - |
-| 11 | flush | - | - | - |
+| \# | Method | Substrate method | 
+| :------------: | :------------: | :------------: |
+| 1 | initChain | load_spec |
+| 2 | checkTx | validate_transaction |
+| 3 | beginBlock | cosmos_abci::offchain_worker |
+| 4 | deliverTx | cosmos_abci::offchain_worker |
+| 5 | endBlock | cosmos_abci::offchain_worker | 
+| 6 | commit | cosmos_abci::offchain_worker  | 
+| 7 | query | json-rpc server | 
+| 8 | info | json-rpc server | 
+| 9 | setOption | json-rpc server |
+| 10 | echo | json-rpc server |
+| 11 | flush | json-rpc server |
+
 
 ## Demo application
 To demonstrate the correct work of our module, we chose a simple Cosmos SDK-based application "Nameservice": [tutorial](https://tutorials.cosmos.network/nameservice/tutorial/00-intro.html), [source code](https://github.com/cosmos/sdk-tutorials/tree/master/nameservice) .
