@@ -138,8 +138,6 @@ Cosmos SDK - master branch on commit [89097a0](https://github.com/adoriasoft/cos
 
 
 ## User guides
-[Launch Cosmos](https://github.com/adoriasoft/cosmos-sdk/blob/feature/add_nameservice/simapp/README.md)
+[Launch Substrate](https://github.com/adoriasoft/polkadot_cosmos_integration/blob/master/README.md)
 
-[Launch Substrate](https://github.com/adoriasoft/polkadot_cosmos_integration/blob/master/substrate/README.md )
-
-[Send transaction](https://github.com/adoriasoft/cosmos-sdk/blob/feature/add_nameservice/simapp/README.md)
+[Launch Cosmos and send transactions](https://github.com/adoriasoft/cosmos-sdk/blob/feature/add_nameservice/simapp/README.md)
