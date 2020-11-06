@@ -15,5 +15,6 @@ A more detailed description of the finished steps and future plans can be found 
 The details of solution architecture are described [here](https://github.com/adoriasoft/polkadot-cosmos-docs/blob/master/description.md).
 
 ## Links
+ - [User guide](https://github.com/adoriasoft/polkadot_cosmos_integration/blob/master/README.md)
  - [Polkadot](https://polkadot.network/)
  - [Cosmos](https://cosmos.network/ )
