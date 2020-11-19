@@ -21,18 +21,18 @@ The first phase included initial research of Substrate and Cosmos SDK and the im
 
 During phase 1, we've implemented the main methods of ABCI (checkTx, deliverTx, beginBlock, endBlock, commit, initChain), but there is a set of other useful ABCI methods that can be implemented (Info, SetOption, Query, Flush, Echo). Tendermint acts as an intermediary between Cosmos CLI and application, the same should be done by Substrate. Some of these calls are just redirected by Tendermint, but others may be processed in a more complex way. Also, Tendermint reacts on Cosmos ABCI responses, and one of the most important cases is validators list and consensus parameters updates according to EndBlock response.
 
-**Milestone 3 (In progress)**
+**Milestone 3 (Complete)**
 
 - Implement ransactions broadcast APIs and ABCI in Substrate RPC APIs similar to https://docs.tendermint.com/master/rpc/#/ ;
 - Add ABCI methods Info, SetOption, Query, Flush, Echo in Substrate RPC and ABCI_pallet so that they can be used for interaction between Cosmos CLI and Cosmos node;
 - Processing of ABCI responses in ABCI pallet similar to their processing in Tendermint (excluding validator list and consensus parameters updating in EndBock, it will be done during next milestone);
 - Cover Cosmos transactions with Substrate unsigned transactions instead of signed.
 
-**Milestone 4**
+**Milestone 4 (In progress)**
 
 *Validators election and consensus*
 
-- modifM ABCI pallet so that it will be able to update the list of validator with their weights and consensus parameters according to EndBlock responses.
+- Modify ABCI pallet so that it will be able to update the list of validator with their weights and consensus parameters according to EndBlock responses.
 - Connect BABE and GRANDPA pallets to Substrate node and use weighted voting in these consensuses.
 - Configure Substrate and Cosmos so that validators partisipating in Substrate consensus will get rewards in Cosmos token.
 
