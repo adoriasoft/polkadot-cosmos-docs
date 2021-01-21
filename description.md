@@ -19,9 +19,7 @@ The final aim of this project is to create tools that allow building Polkadot pa
 
 ## How it works?
 In Cosmos SDK Tendermint core encapsulates the Network and Consensus layers of a node. It interacts with the Application layer, which defines the business logic of the system, using ABCI interface. The communication between customer application and Tendermint core is similar to ‘client-server’, customer application is the server, and Tendermint core is the client. 
-
-![Figure 1 - The interaction of two Cosmos nodes](https://i.ibb.co/DpQzzgS/ABCI-Detailed-explanation.png)
-
+![Figure 1 - The interaction of two Cosmos nodes](https://raw.githubusercontent.com/adoriasoft/polkadot-cosmos-docs/master/img/ABCI-Detailed-explanation.png)
 Figure 1 - The interaction of two Cosmos nodes
 
 ## ABCI
@@ -50,7 +48,7 @@ We analyzed several possible solutions for integration:
 ### Runtime interfaces
 Runtime interfaces allow us to use external libraries and create network connections directly from runtime. Initially, we used HTTP protocol that natively supported by Substrate and HTTP-GRPC gateway on the application (Cosmos) side. Then we add [Tonic library](https://github.com/hyperium/tonic) that provides GRPC protocol to Substrate node and now we send GRPC requests directly to Cosmos node.
 
-![Figure 2 - Transaction and block processing in Substrate-Cosmos app](https://i.ibb.co/ByHjGS6/Architecture-direct.png)
+![Figure 2 - Transaction and block processing in Substrate-Cosmos app](https://raw.githubusercontent.com/adoriasoft/polkadot-cosmos-docs/master/img/Architecture-direct.png)
 
 Figure 2 - Transaction and block processing in Substrate-Cosmos app
 
@@ -75,7 +73,7 @@ Runtime interfaces are used for transaction checking.
 
 Off-chain workers for each block are called when block processing is finished. During extrinsic processing, `abci_transaction` extrinsics are saved into storage. The off-chain worker calls `beginBlock`, then gets all necessary extrinsics from storage, calls `deliverTx` for each one, removes them from storage and calls `endBlock` and `commit`.
 
-![Figure 3](https://i.ibb.co/SwVVXQp/Off-chain-workers.png)
+![Figure 3](https://raw.githubusercontent.com/adoriasoft/polkadot-cosmos-docs/master/img/Off-chain-workers.png)
 
 Figure 3 - Off-chain worker
 1) Runtime saves data from new block to storage.
@@ -110,7 +108,7 @@ A user can interact with its Cosmos node using CLI. This CLI doesn't connect dir
 For interactions with CLI, Tendermint contains an additional json-rpc server, a bit similar to the server used Substrate for interaction with web interface. 
 We implemented an [rpc server](https://github.com/adoriasoft/polkadot_cosmos_integration/tree/master/substrate/node/src/cosmos_rpc) as a component of Substrate node to allow interactions between CLI and Cosmos. 
 
-![Figure 4](https://i.ibb.co/cDTjbCW/CLI-scheme.png)
+![Figure 4](https://raw.githubusercontent.com/adoriasoft/polkadot-cosmos-docs/master/img/CLI-scheme.png)
 
 Figure 4 - Interaction between Cosmos CLI and Cosmos node using Substrate RPC
 
