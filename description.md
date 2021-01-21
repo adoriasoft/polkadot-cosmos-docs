@@ -2,10 +2,25 @@
 
 The final aim of this project is to create tools that allow building Polkadot parachains using Comos SDK.
 
+### Table of Contents
+[1. How it works?](#How-it-works?)<br>
+[2. ABCI](#ABCI)<br>
+[3. Polkadot-Cosmos integration](#Polkadot-Cosmos-integration)<br>
+[3.1. Runtime interfaces](#Runtime-interfaces)<br>
+[3.2 Off-chain workers](#Off-chain-workers)<br>	
+[3.3 Common database](#Common-database)<br>	
+[4. Cosmos CLI and RPC](#Cosmos-CLI-and-RPC)<br>	
+[5. ABCI calls in Substrate](#ABCI-calls-in-Substrate)<br>
+[Validators](#Validators)<br>
+[6. Demo application](#Demo-application)<br>
+[7. Versions](#Versions)<br>
+[8. User-guides](#User-guides)<br>
+
+
 ## How it works?
 In Cosmos SDK Tendermint core encapsulates the Network and Consensus layers of a node. It interacts with the Application layer, which defines the business logic of the system, using ABCI interface. The communication between customer application and Tendermint core is similar to ‘client-server’, customer application is the server, and Tendermint core is the client. 
 
-![Figure 1](https://i.ibb.co/5sGYmNX/ABCI-Detailed-explanation.png)
+![Figure 1 - The interaction of two Cosmos nodes](https://i.ibb.co/DpQzzgS/ABCI-Detailed-explanation.png)
 
 Figure 1 - The interaction of two Cosmos nodes
 
@@ -35,9 +50,14 @@ We analyzed several possible solutions for integration:
 ### Runtime interfaces
 Runtime interfaces allow us to use external libraries and create network connections directly from runtime. Initially, we used HTTP protocol that natively supported by Substrate and HTTP-GRPC gateway on the application (Cosmos) side. Then we add [Tonic library](https://github.com/hyperium/tonic) that provides GRPC protocol to Substrate node and now we send GRPC requests directly to Cosmos node.
 
-![Figure 2](https://i.ibb.co/bP713sJ/Architecture-direct.png)
+![Figure 2 - Transaction and block processing in Substrate-Cosmos app](https://i.ibb.co/ByHjGS6/Architecture-direct.png)
 
 Figure 2 - Transaction and block processing in Substrate-Cosmos app
+
+1) New block or transaction is imported, Substrate runtime sends GRPC request with data to Cosmos node.
+2) Cosmos runtime updates its state.
+3) Cosmos runtime processes data and sends  GRPC response to Substrate runtime.
+4) Substrate runtime receives response and updates its state
 
 We've implemented cosmos-abci [pallet](https://github.com/adoriasoft/polkadot_cosmos_integration/tree/master/substrate/pallets/cosmos-abci) that contains logic of calls to main ABCI methods (checkTx, deliverTx, beginBlock, endBlock, commit, initChain). These methods are called during chain initialization, transaction validation and block execution. Tonic library, necessary proto files and GRPC calls are situated [here](https://github.com/adoriasoft/polkadot_cosmos_integration/tree/master/substrate/pallets/cosmos-abci/abci).
 
@@ -55,9 +75,17 @@ Runtime interfaces are used for transaction checking.
 
 Off-chain workers for each block are called when block processing is finished. During extrinsic processing, `abci_transaction` extrinsics are saved into storage. The off-chain worker calls `beginBlock`, then gets all necessary extrinsics from storage, calls `deliverTx` for each one, removes them from storage and calls `endBlock` and `commit`.
 
-![Figure 3](https://i.ibb.co/TYwb6Kh/Off-chain-workers.png)
+![Figure 3](https://i.ibb.co/SwVVXQp/Off-chain-workers.png)
 
 Figure 3 - Off-chain worker
+1) Runtime saves data from new block to storage.
+2) Block processing is finished, runtime calls off-chain worker. 
+3) Off-chain worker gets data from the block from storage.
+4) Off-chain worker sends GRPC request with data to Cosmos node 
+5) Cosmos runtime processes data and sends GRPC response to Off-chain worker.
+6) Off-chain worker removes executed transactions from storage.
+
+
 
 ### Common database
 Offchain workers cannot write to the main storage of the node, but they have an additional local storage that can be accessed both from runtime and offchain workers. Also this storage is not synchronized between nodes. In fact, storage is a Rocks database, so potentially other processes on the same device can get access to this DB. 
@@ -82,9 +110,21 @@ A user can interact with its Cosmos node using CLI. This CLI doesn't connect dir
 For interactions with CLI, Tendermint contains an additional json-rpc server, a bit similar to the server used Substrate for interaction with web interface. 
 We implemented an [rpc server](https://github.com/adoriasoft/polkadot_cosmos_integration/tree/master/substrate/node/src/cosmos_rpc) as a component of Substrate node to allow interactions between CLI and Cosmos. 
 
-![Figure 4](https://i.ibb.co/nPJPqtJ/CLI-scheme.png)
+![Figure 4](https://i.ibb.co/cDTjbCW/CLI-scheme.png)
 
 Figure 4 - Interaction between Cosmos CLI and Cosmos node using Substrate RPC
+
+1) User sends new request using Cosmos CLI.  Cosmos CLI sends it to Substrate.
+2) Substrate RPC receives the request and call an appropriate ABCI method in ABCI pallet.
+3) ABCI pallet sends GRPC request to Cosmos runtime.
+4) Cosmos runtime receives request and may get necessary information from storage.
+5) Cosmos runtime sends GRPC response to Substrate runtime.
+6) Substrate runtime gets response and
+	- a) may update its state according to response.
+	- b) may add a new transaction to mempool.
+7) Substrate runtime returns response to Substrate RPC.
+8) Substrate RPC sends response to Cosmos CLI.
+
 
 Tendermint server provides the following [API](https://docs.tendermint.com/master/rpc/). All methods are divided into several groups:
 - *Tx* - these methods creates new transactions - (done)
@@ -126,6 +166,10 @@ As described above, different ABCI methods are called in different places. Full 
 | 9 | setOption | json-rpc server |
 | 10 | echo | json-rpc server |
 | 11 | flush | json-rpc server |
+
+
+## Validators
+
 
 
 ## Demo application
