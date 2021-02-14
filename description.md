@@ -2,13 +2,10 @@
 
 The final aim of this project is to create tools that allow building Polkadot parachains using Comos SDK.
 
-### Table of Contents
+## Table of Contents
 [1. How it works?](#How-it-works?)<br>
 [2. ABCI](#ABCI)<br>
 [3. Polkadot-Cosmos integration](#Polkadot-Cosmos-integration)<br>
-[3.1. Runtime interfaces](#Runtime-interfaces)<br>
-[3.2 Off-chain workers](#Off-chain-workers)<br>	
-[3.3 Common database](#Common-database)<br>	
 [4. Cosmos CLI and RPC](#Cosmos-CLI-and-RPC)<br>	
 [5. ABCI calls in Substrate](#ABCI-calls-in-Substrate)<br>
 [6. Validators](#Validators)<br>
@@ -83,7 +80,6 @@ Figure 3 - Off-chain worker
 4) Off-chain worker sends GRPC request with data to Cosmos node 
 5) Cosmos runtime processes data and sends GRPC response to Off-chain worker.
 6) Off-chain worker removes executed transactions from storage.
-
 
 
 ### Common database
@@ -168,28 +164,33 @@ As described above, different ABCI methods are called in different places. Full 
 
 
 ## Validators
-Both Substrate and Cosmos use DPoS BFT consensuses but with some differences.  Substrate is based on a hybrid consensus (BABE or AURA) + GRANDPA; Cosmos works with Tendermint. Staking during validators elections is one of the main token use cases. In our case, Substrate is responsible for the consensus layer, but token and stacking logic is defined in Cosmos, so we need to elect Substrate validators according to the Cosmos stacking system. For this purpose we need to match Cosmos and Substrate validator addresses, so that they can be elected in Cosmos and participate in consensus in Substrate.
+Both Substrate and Cosmos use DPoS BFT consensuses but with some differences.  Substrate is based on a hybrid consensus (BABE or AURA) + GRANDPA; Cosmos works with Tendermint. Staking during validators elections is one of the main token use cases. In our case, Substrate is responsible for the consensus layer, but token and stacking logic is defined in Cosmos, so we need to elect Substrate validators according to the Cosmos stacking system. For this purpose, we need to match Cosmos and Substrate validator addresses so that they can be elected in Cosmos and participate in consensus in Substrate.
 
-Also, in Substrate consensuses, all validators are equal because of NPoS election, but in Cosmos validator's weight in consensus depends on its stake, so we need to use weighted voting in BABE and GRANDPA. 
+In Substrate consensuses, all validators are equal because of the NPoS election, but in Cosmos, validators' weights in consensus depend on their stakes, so we need to use weighted voting in BABE and GRANDPA. 
 
 ### Matching validators
 
-To provide matching Cosmos and Substrate accoutns, two maps are added to abci_pallet storage. `CosmosAccounts` maps Cosmos keys to Substrate keys, `SubstrateAccounts` does vice versa. Any Substrate user can register its Cosmos account using `insert_cosmos_account` extrinsic and remove an existing account using `remove_cosmos_account` extrinsic. 
+The abci-pallet's storage contains a few maps to provide matching Cosmos and Substrate accounts. `CosmosAccounts` maps Cosmos keys to Substrate keys, `SubstrateAccounts` does vice versa. Any Substrate user can register their Cosmos account using `insert_cosmos_account` extrinsic and remove an existing account using `remove_cosmos_account` extrinsic. 
 
 The current version of `insert_cosmos_account` extrinsic doesn't verify that a Substrate user really controls a corresponding Cosmos account. It will be fixed later by adding a digital signature made by the Cosmos key to the extrinsic.
 
 ### Validator update
-Cosmos informs Tendermint/ABCI pallet about changes in the list of validators using `validator_updates` field in the response of `EndBlock`. Each validator in the list is represented by `pub_key` and `power`. Off-chain worker, where `EndBlock` is called, can't write updates directly to Substrate storage; also, the off-chain worker's storage doesn't guarantee data safety after restarts. That's why an additional instance of RocksDB was added to Substrate node, it can be accessed from both off-chain worker and Substrate runtime. This DB also allowed solving the problem of node crashes after restart - Substrate calls `InitChain` each time that contradicts to the requirement of Cosmos where `InitChain` must be called only once. When `InitChain` is called first, a special flag is set in DB that blocks repeated calls.
+Cosmos informs Tendermint/ABCI pallet about changes in the list of validators using the `validator_updates` field in the response of `EndBlock`. Each validator in the list is represented by `pub_key` and `power` (`power` is an integer directly proportional to the stake). 
 
-Validator updates in Substrate are implemented through the trait `SessionManager` and its method `new_session`. In ABCI pallet `new_session` gets the list of Cosmos validators for a corresponding block from DB using runtime API and mathces them with corresponding Substrate accounts.
+Off-chain worker, where `EndBlock` is called, can't write updates directly to Substrate storage; also, the off-chain worker's storage doesn't guarantee data safety after restarts. That's why an additional instance of RocksDB was added to the Substrate node, it can be accessed from both off-chain worker and Substrate runtime. This DB also allowed solving the problem of node crashes after restarts - Substrate calls `InitChain` each time that contradicts the requirement of Cosmos where `InitChain` must be called only once. When `InitChain` is called first, a special flag is set in DB that blocks repeated calls.
 
-The current version of Substrate `session` pallet [doesn't support](https://github.com/paritytech/subport/issues/86) weighted voting, that's why the current version of ABCI pallet interacts directly with GRANDPA and BABE.
+Validator updates in Substrate are implemented through the trait [`SessionManager`](https://substrate.dev/rustdocs/v2.0.0/pallet_session/trait.SessionManager.html) and its method `new_session` that returns the list of `ValidatorId`. The pallets that use this validator list - Aura, BABE, GRANDPA - implement [`OneSessionHandler`](https://substrate.dev/rustdocs/v2.0.0/pallet_session/trait.OneSessionHandler.html) and process the received list in `on_new_session`. 
+The current version of Substrate `session` pallet [doesn't support](https://github.com/paritytech/subport/issues/86) weighted voting (`new_session` returns only the list of validators without weights). At the same time, BABE and GRANDPA operate with authorities' lists with weights, and the equal weights of all authorities from `new_session` are hardcoded in `on_new_session` methods.
 
-Validators' weights in GRANDPA are set...
-Validators' weights in BABE are set...
+ In ABCI pallet, `new_session` gets the list of Cosmos validators for a corresponding block from DB using runtime interfaces and matches them with corresponding Substrate accounts registered through `insert_cosmos_account` extrinsic. The validators' weights received from Cosmos are accessible in the pallet but can't be used by consensus pallets because of the limitations described above. This logic is completely correct for Aura, which doesn't work with weights at all.
+
+ To add a fully functional weighted voting to Substrate, we need to modify several pallets: session, aura, grandpa, babe. It may be done in the later versions.
+
+ Substrate has limits for a maximum frequency of validator updates (minimum session length) relates to the logic of [session change](https://github.com/paritytech/substrate/discussions/7801). That's why we can't update validators on each block in contrast to Cosmos and Tendermint, but only every two blocks.
+
 
 ### Validator rewards
-Tendermint informs Cosmos about validators who signed a current block using `last_commit_info` field from `BeginBlock` request. To use the same approach with Substrate is more complicated because GRANDPA finalizes not each block but a chain of blocks at once. That's why it's impossible to get the list of signers for each block. A possible solution - limit the maximum chain length in GRANDPA to one block. It will remove an important advantage of GRANDPA and allow Substrate to interact with Cosmos more similar to the way the Tendermint does.
+Tendermint informs Cosmos about validators who signed a current block using `last_commit_info` field from `BeginBlock` request. To use the same approach with Substrate is more complicated because GRANDPA finalizes not each block but a chain of blocks at once. That's why it's impossible to get the list of signers for each block. A possible solution - limit the maximum chain length in GRANDPA to one block. It will remove an important advantage of GRANDPA and allow Substrate to interact with Cosmos more similar to the way the Tendermint does. It will also solve the fork resolution problem that isn't supported by Cosmos SDK.
 
 The current version of ABCI pallet deals only with the ideal case when all validators work honestly and sign each block: `last_commit_info` contains the list of ALL current validators.
 
@@ -204,7 +205,7 @@ Tendermint can update a set of system parameters according to `EndBlock` respons
 - `max_gas` - an equvalent of Substrate [MaximumBlockWeight](https://substrate.dev/rustdocs/v2.0.0/frame_system/trait.Trait.html#associatedtype.MaximumBlockWeight)
 - `time_iota_ms` - an equvalent of Substrate [Slot duration](https://substrate.dev/rustdocs/v2.0.0/sc_consensus_slots/struct.SlotInfo.html#structfield.duration)
 
-All these parameters are parts of Substrate runtime (?) and can't be easily updated from the off-chain worker that can't write directly to Substrate storage. There is a possible solution - add a new extrinsic type that allows such updates. This extrinsic will require a more complex verification.... 
+All these parameters are parts of Substrate runtime and can't be easily updated from the off-chain worker that can't write directly to Substrate storage. These parameters are critical for system stability and Substrate doesn't provide mechanisms to update them easily. There is a possible solution - add a new extrinsic type that allows such updates. This extrinsic will require a more complex verification and connection with Substrate governance mechanisms. This feature is not extremely important on the current astage and will be implemented later.
 
 **EvidenceParams**
 - `max_age_num_blocks`, `max_age_duration`,
@@ -218,15 +219,19 @@ All these parameters are parts of Substrate runtime (?) and can't be easily upda
 
 - `app_version` - unnecessary for Substrate at this stage.
 
+
+### BABE and AURA
+The current version of node supports both BABE and AURA consensuses, but only one can be used by one node. The consensus is chosen according to the feature (`--features "std aura"` or `--features "std babe"`) used during node initialization.
+
 ## Pallet subscription
-Subscription mechanism allows other pallets to expand the `check_tx` and `deliver_tx` logic. 
+Subscription mechanism allows other pallets to expand the `check_tx` and `deliver_tx` logic. This approach is similar to the `SessionManager` and `OneSessionHandler` interactions. The trait `SubscriptionManager` contains two methods: `on_check_tx` and `on_deliver_tx` that are called after the corresponding methods of the abci pallet.
 
 ## Demo application
 To demonstrate the correct work of our module, we chose a simple Cosmos SDK-based application "Nameservice": [tutorial](https://tutorials.cosmos.network/nameservice/tutorial/00-intro.html), [source code](https://github.com/cosmos/sdk-tutorials/tree/master/nameservice) .
 Brief changes have been made in the code to launch the application with a newer version of Cosmos SDK, [updated version](https://github.com/adoriasoft/cosmos-sdk/tree/feature/add_nameservice). 
 
 ## Versions
-Substrate - rc6
+Substrate - v2.
 Cosmos SDK - master branch on commit [89097a0](https://github.com/adoriasoft/cosmos-sdk/commit/89097a00d7f6d6339c377f6c87bea8fa5068d125). 
 
 
