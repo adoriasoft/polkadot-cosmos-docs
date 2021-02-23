@@ -1,6 +1,6 @@
 # Project description
  
-The ultimate goal of this project is to create tools that allow building Polkadot parachains with theCosmos SDK.
+The ultimate goal of this project is to create tools that allow building Polkadot parachains with the Cosmos SDK.
  
 ## Table of Contents
 [1. How it works?](#How-it-works?)<br>
